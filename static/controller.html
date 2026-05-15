@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>GameGarage-Controller</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.9.0/nipplejs.min.js"></script>
+
+
+  <style>
+    body {
+      margin: 0;
+      background-color: #1e1e1e;
+      font-family: Arial, sans-serif;
+      overflow: hidden;
+      color: white;
+    }
+
+    #input-display {
+      position: fixed;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 5px 10px;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 5;
+    }
+
+    #disconnect-btn {
+      position: fixed;
+      top: 100px;
+      right: 10px;
+      z-index: 5;
+      cursor: pointer;
+    }
+
+    #disconnect-btn img {
+      width: 40px;
+      height: 40px;
+    }
+
+    #queue-display {
+      position: fixed;
+      top: 100px;
+      left: 10px;
+      font-size: 0.9rem;
+      background: rgba(0, 0, 0, 0.5);
+      padding: 5px 10px;
+      z-index: 5;
+    }
+
+    #joystick-zone {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 50vw;
+      height: calc(100vh - 150px);
+      z-index: 1;
+    }
+
+    .gamecube-buttons {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      width: 150px;
+      height: 150px;
+      z-index: 2;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .btn-circle {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      border: none;
+      font-size: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: transform 0.1s ease-in-out;
+      color: white;
+    }
+
+    .btn-circle:active {
+      transform: scale(0.95);
+    }
+
+    #button-a { background-color: #198754; grid-area: 2 / 2; }
+    #button-b { background-color: #dc3545; grid-area: 2 / 1; }
+    #button-x { background-color: #0d6efd; grid-area: 1 / 2; }
+    #button-y { background-color: #ffc107; color: black; grid-area: 1 / 1; }
+
+    #button-a:hover { background-color: #146c43; }
+    #button-b:hover { background-color: #b02a37; }
+    #button-x:hover { background-color: #0a58ca; }
+    #button-y:hover { background-color: #e0a800; }
+  </style>
+</head>
+<body>
+  
+
+  <div id="input-display">
+    <strong>Current Input:</strong> <span id="input-log">None</span>
+  </div>
+
+  <div id="disconnect-btn" onclick="location.reload()">
+    <img src="https://cdn-icons-png.flaticon.com/512/1828/1828665.png" alt="Disconnect">
+  </div>
+
+  <div id="queue-display">
+    <div><strong>Players in Queue:</strong> <span id="queue-total">1</span></div>
+    <div><strong>Players Ahead:</strong> <span id="queue-position">0</span></div>
+  </div>
+
+  <div id="joystick-zone"></div>
+  <script>
+    const protocol = location.protocol === "https:" ? "wss" : "ws";
+    const socket = new WebSocket(`${protocol}://${location.host}/ws`);
+
+    socket.onopen = () => {
+      console.log("Connected to WebSocket");
+    };
+  <!-- Position centers the joystick within its container -->
+    const joystick = nipplejs.create({
+      zone: document.getElementById('joystick-zone'),
+      mode: 'static',
+      position: { left: '50%', top: '50%' },
+      color: 'blue'
+    });
+
+    joystick.on('move', (evt, data) => {
+
+
+      if (data && data.direction) {
+        socket.send(JSON.stringify({
+          type: 'joystick',
+          playerId: 'player1',
+          direction: data.direction.x // 'left' or 'right'
+        }));
+      }
+
+    });
+
+    joystick.on('end', () => {     
+
+      socket.send(JSON.stringify({
+        type: 'joystick',
+        playerId: 'player1',
+        direction: null
+      }));
+    });
+  </script>
+
+  <div class="gamecube-buttons">
+    <button id="button-y" class="btn-circle">Y</button>
+    <button id="button-x" class="btn-circle">X</button>
+    <button id="button-b" class="btn-circle">B</button>
+    <button id="button-a" class="btn-circle">A</button>
+  </div>
+
+</body>
+</html>
