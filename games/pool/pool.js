@@ -1,4 +1,4 @@
-import { loadAudio, playSound, startMusic, stopMusic, toggleMute } from './audio.js';
+import { loadAudio, playSound, startMusic, stopMusic, toggleMute, isMuted } from './audio.js';
 import {
   initPhysics, setupRack, applyShot, allSleeping,
   updatePhysics, getSnapshot, applySnapshot, getBallState, placeBall,
@@ -30,40 +30,58 @@ function injectStyles() {
     .pool-panel {
       position: absolute; top: 50%; left: 50%;
       transform: translate(-50%, -50%);
-      background: rgba(10,20,10,0.94);
+      background: linear-gradient(160deg, rgba(10,22,10,0.97) 0%, rgba(6,14,6,0.97) 100%);
       border: 1.5px solid #1a6b3c;
-      border-radius: 14px;
-      padding: 32px 40px;
+      border-radius: 16px;
+      padding: 28px 36px 32px;
       min-width: 340px;
-      box-shadow: 0 8px 40px rgba(0,0,0,0.7);
+      box-shadow: 0 12px 48px rgba(0,0,0,0.8), 0 0 0 1px rgba(26,107,60,0.2);
       color: #e8f5e9;
-      display: flex; flex-direction: column; align-items: center; gap: 14px;
+      display: flex; flex-direction: column; align-items: center; gap: 12px;
     }
     .pool-title {
-      font-size: 2.6rem; font-weight: 900; letter-spacing: 0.18em;
-      color: #d4a85a; text-shadow: 0 2px 12px rgba(212,168,90,0.4);
+      font-size: 2.2rem; font-weight: 900; letter-spacing: 0.2em;
+      color: #d4a85a; text-shadow: 0 2px 16px rgba(212,168,90,0.45);
+      margin-bottom: 2px;
     }
-    .pool-section { display: flex; flex-direction: column; gap: 10px; width: 100%; align-items: center; }
+    .pool-hint {
+      font-size: 0.75rem; color: #4a7a5a; letter-spacing: 0.05em;
+      margin-bottom: 4px;
+    }
+    .pool-section { display: flex; flex-direction: column; gap: 9px; width: 100%; align-items: center; }
     .pool-row { flex-direction: row !important; }
     .pool-input {
-      background: rgba(255,255,255,0.07); border: 1px solid #1a6b3c;
-      border-radius: 8px; color: #e8f5e9; padding: 9px 14px; font-size: 1rem;
-      outline: none; width: 100%; box-sizing: border-box;
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(26,107,60,0.7);
+      border-radius: 8px; color: #e8f5e9; padding: 9px 14px; font-size: 0.95rem;
+      outline: none; width: 100%; box-sizing: border-box; transition: border-color 0.15s;
     }
     .pool-input-code { width: 140px !important; text-align: center; letter-spacing: 0.2em; font-weight: 700; }
-    .pool-input:focus { border-color: #d4a85a; }
+    .pool-input:focus { border-color: #d4a85a; background: rgba(255,255,255,0.09); }
+    .pool-select {
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(26,107,60,0.7);
+      border-radius: 8px; color: #e8f5e9; padding: 8px 10px; font-size: 0.9rem;
+      outline: none; cursor: pointer; transition: border-color 0.15s;
+    }
+    .pool-select:focus { border-color: #d4a85a; }
+    .pool-select option { background: #0a160a; }
+    .pool-difficulty-row {
+      display: flex; align-items: center; justify-content: space-between;
+      width: 100%; gap: 10px;
+    }
+    .pool-difficulty-label { font-size: 0.82rem; color: #7aaa8a; flex-shrink: 0; }
     .pool-btn {
-      border: none; border-radius: 8px; cursor: pointer; font-size: 1rem;
-      font-weight: 700; padding: 10px 24px; transition: background 0.15s, transform 0.1s;
+      border: none; border-radius: 8px; cursor: pointer; font-size: 0.95rem;
+      font-weight: 700; padding: 10px 24px; transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+      width: 100%;
     }
     .pool-btn:active { transform: scale(0.97); }
-    .pool-btn-primary { background: #1a6b3c; color: #fff; }
-    .pool-btn-primary:hover { background: #228a4e; }
-    .pool-btn-secondary { background: rgba(255,255,255,0.1); color: #b0c4b1; border: 1px solid #1a6b3c; }
-    .pool-btn-secondary:hover { background: rgba(255,255,255,0.17); }
-    .pool-btn-xs { padding: 5px 12px; font-size: 0.82rem; }
-    .pool-divider { height: 1px; background: #1a6b3c; width: 100%; opacity: 0.5; }
-    .pool-local-label { font-size: 0.75rem; color: #5a8a6a; text-transform: uppercase; letter-spacing: 0.12em; font-weight: 700; align-self: flex-start; }
+    .pool-btn-primary { background: #1a6b3c; color: #fff; box-shadow: 0 2px 8px rgba(26,107,60,0.4); }
+    .pool-btn-primary:hover { background: #228a4e; box-shadow: 0 4px 12px rgba(26,107,60,0.5); }
+    .pool-btn-secondary { background: rgba(255,255,255,0.08); color: #b0c4b1; border: 1px solid rgba(26,107,60,0.5); }
+    .pool-btn-secondary:hover { background: rgba(255,255,255,0.14); }
+    .pool-btn-xs { padding: 5px 12px; font-size: 0.82rem; width: auto; }
+    .pool-divider { height: 1px; background: linear-gradient(90deg, transparent, #1a6b3c, transparent); width: 100%; opacity: 0.6; margin: 2px 0; }
+    .pool-local-label { font-size: 0.72rem; color: #4a8a6a; text-transform: uppercase; letter-spacing: 0.14em; font-weight: 700; align-self: flex-start; }
 
     /* Room screen */
     .pool-room-code-label { color: #888; font-size: 0.82rem; letter-spacing: 0.1em; text-transform: uppercase; }
@@ -84,65 +102,91 @@ function injectStyles() {
     /* HUD */
     .pool-hud-bar {
       position: absolute; top: 0; left: 0; right: 0;
-      display: flex; align-items: stretch; background: rgba(5,15,5,0.85);
-      border-bottom: 1.5px solid #1a6b3c; min-height: 58px;
+      display: flex; align-items: stretch;
+      background: rgba(4,12,4,0.9); backdrop-filter: blur(4px);
+      border-bottom: 1.5px solid #1a6b3c; min-height: 62px;
     }
     .pool-hud-player {
       flex: 1; padding: 8px 14px; display: flex; flex-direction: column; justify-content: center;
-      transition: background 0.2s;
+      transition: background 0.25s;
     }
-    .pool-hud-active { background: rgba(26,107,60,0.22); box-shadow: inset 0 0 0 1.5px #1a6b3c; }
+    .pool-hud-active { background: rgba(26,107,60,0.2); box-shadow: inset 0 0 0 1.5px rgba(26,107,60,0.6); }
+    .pool-hud-name-row { display: flex; align-items: center; gap: 7px; }
     .pool-hud-name { font-weight: 700; font-size: 0.95rem; color: #e8f5e9; }
-    .pool-hud-balls { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
-    .pool-ball-dot {
-      display: inline-block; width: 13px; height: 13px; border-radius: 50%;
-      border: 1px solid rgba(255,255,255,0.18); transition: opacity 0.3s;
+    .pool-group-badge {
+      font-size: 0.6rem; font-weight: 800; letter-spacing: 0.08em;
+      color: #d4a85a; background: rgba(212,168,90,0.12);
+      border: 1px solid rgba(212,168,90,0.3); border-radius: 4px;
+      padding: 1px 5px; text-transform: uppercase;
     }
-    .pool-ball-pocketed { opacity: 0.2; }
+    .pool-hud-balls { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+    .pool-ball-dot {
+      display: inline-block; width: 15px; height: 15px; border-radius: 50%;
+      border: 1.5px solid rgba(255,255,255,0.22); transition: opacity 0.3s, transform 0.2s;
+    }
+    .pool-ball-pocketed { opacity: 0.15; transform: scale(0.8); }
     .pool-hud-center {
-      width: 160px; display: flex; align-items: center; justify-content: center;
+      width: 170px; display: flex; align-items: center; justify-content: center;
       flex-shrink: 0;
     }
-    .pool-turn-indicator { font-size: 0.78rem; font-weight: 800; letter-spacing: 0.08em; text-align: center; }
-    .pool-my-turn  { color: #4eff8a; text-shadow: 0 0 8px rgba(78,255,138,0.5); }
-    .pool-opp-turn { color: #666; }
+    .pool-turn-indicator { font-size: 0.8rem; font-weight: 800; letter-spacing: 0.1em; text-align: center; padding: 5px 10px; border-radius: 20px; }
+    .pool-my-turn  { color: #4eff8a; text-shadow: 0 0 10px rgba(78,255,138,0.5); background: rgba(78,255,138,0.07); }
+    .pool-opp-turn { color: #556655; }
+
+    /* Mute button */
+    .pool-mute-btn {
+      align-self: center; margin-right: 10px;
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(26,107,60,0.5);
+      border-radius: 8px; color: #e8f5e9; font-size: 1rem;
+      padding: 6px 10px; cursor: pointer; pointer-events: all;
+      transition: background 0.15s;
+    }
+    .pool-mute-btn:hover { background: rgba(255,255,255,0.12); }
 
     /* Message area */
     .pool-msg-area {
-      position: absolute; top: 68px; left: 50%; transform: translateX(-50%);
-      background: rgba(5,15,5,0.88); border: 1px solid #1a6b3c;
-      border-radius: 20px; padding: 6px 22px; font-size: 0.9rem; color: #d4a85a;
+      position: absolute; top: 72px; left: 50%; transform: translateX(-50%);
+      background: rgba(4,12,4,0.92); border: 1px solid rgba(26,107,60,0.7);
+      border-radius: 20px; padding: 6px 24px; font-size: 0.9rem; color: #d4a85a;
       font-weight: 600; white-space: nowrap;
       transition: opacity 0.6s;
       display: none;
       pointer-events: none;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
     }
 
     /* Power bar */
     .pool-power-bar-wrap {
-      position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
-      display: none; flex-direction: column; align-items: center; gap: 4px;
+      position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+      display: none; flex-direction: column; align-items: center; gap: 5px;
+    }
+    .pool-power-label {
+      font-size: 0.65rem; font-weight: 800; letter-spacing: 0.15em;
+      color: #5a8a6a; text-transform: uppercase;
     }
     .pool-power-bar-bg {
-      width: 240px; height: 12px; background: rgba(255,255,255,0.1);
-      border-radius: 6px; overflow: hidden; border: 1px solid #1a6b3c;
+      width: 280px; height: 16px; background: rgba(255,255,255,0.08);
+      border-radius: 8px; overflow: hidden; border: 1px solid rgba(26,107,60,0.6);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
     }
-    .pool-power-bar-fill { height: 100%; border-radius: 6px; transition: width 0.05s, background 0.05s; }
+    .pool-power-bar-fill { height: 100%; border-radius: 8px; transition: width 0.04s, background 0.04s; }
 
     /* Result screen */
     .pool-result-overlay {
       position: fixed; inset: 0;
-      background: rgba(0,0,0,0.72); display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.75); display: flex; align-items: center; justify-content: center;
     }
     .pool-result-box {
-      background: rgba(10,20,10,0.97); border: 1.5px solid #1a6b3c;
-      border-radius: 16px; padding: 40px 52px;
+      background: linear-gradient(160deg, rgba(10,22,10,0.98), rgba(6,14,6,0.98));
+      border: 1.5px solid #1a6b3c;
+      border-radius: 18px; padding: 44px 56px;
       display: flex; flex-direction: column; align-items: center; gap: 16px;
       color: #e8f5e9; text-align: center; min-width: 300px;
+      box-shadow: 0 16px 60px rgba(0,0,0,0.8);
     }
     .pool-result-icon  { font-size: 3.5rem; }
     .pool-result-title { font-size: 2rem; font-weight: 900; color: #d4a85a; }
-    .pool-result-msg   { color: #b0c4b1; font-size: 0.95rem; }
+    .pool-result-msg   { color: #8aaa8a; font-size: 0.95rem; }
   `;
   document.head.appendChild(style);
 }
@@ -165,6 +209,7 @@ export default function poolInit({ canvas, context, name, kontra }) {
   let isHost       = false;
   let localMode    = false;
   let aiMode       = false;
+  let aiDifficulty = 'medium';
   let aiShotTimer  = null;
   let ballInHand   = false;
   let pendingSnap  = null;
@@ -223,7 +268,7 @@ export default function poolInit({ canvas, context, name, kontra }) {
         cueState.y = BREAK_Y;
       }
 
-      const shot = computeAiShot(gameState.players, 2);
+      const shot = computeAiShot(gameState.players, 2, aiDifficulty);
       if (!shot) return;
       resetTurnState();
       applyShot(shot.power, shot.angle, 0, 0);
@@ -406,10 +451,11 @@ export default function poolInit({ canvas, context, name, kontra }) {
     updateCueVisibility();
   }
 
-  function startAiGame(p1Name) {
-    aiMode    = true;
-    localMode = false;
-    localName = p1Name;
+  function startAiGame(p1Name, difficulty = 'medium') {
+    aiMode       = true;
+    localMode    = false;
+    aiDifficulty = difficulty;
+    localName    = p1Name;
     opponentName = 'CPU';
     initGameState(1, p1Name, 'CPU');
     setupRack();
@@ -452,8 +498,8 @@ export default function poolInit({ canvas, context, name, kontra }) {
       onPlayLocal: (p1Name, p2Name) => {
         startLocalGame(p1Name, p2Name);
       },
-      onPlayVsAI: (p1Name) => {
-        startAiGame(p1Name);
+      onPlayVsAI: (p1Name, difficulty) => {
+        startAiGame(p1Name, difficulty);
       },
     });
   }
@@ -500,6 +546,8 @@ export default function poolInit({ canvas, context, name, kontra }) {
       aiMode,
       powerVisible: false,
       powerPct:     0,
+      muteState:    isMuted(),
+      onToggleMute: () => { toggleMute(); updateHUDDisplay(); },
     };
   }
 

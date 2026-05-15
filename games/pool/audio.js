@@ -13,6 +13,18 @@ function getAudioCtx() {
 
 // Background music
 let musicAudio = null;
+let musicStartPending = false;
+
+function resumeOnInteraction() {
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  if (musicStartPending && musicAudio && !muted) {
+    musicAudio.play().catch(() => {});
+    musicStartPending = false;
+  }
+}
+document.addEventListener('click',      resumeOnInteraction, { passive: true });
+document.addEventListener('touchstart', resumeOnInteraction, { passive: true });
+document.addEventListener('keydown',    resumeOnInteraction, { passive: true });
 
 // Generate simple tones for sound effects
 function beep(frequency, duration, type = 'sine', vol = 0.3) {
@@ -49,13 +61,9 @@ function beep(frequency, duration, type = 'sine', vol = 0.3) {
 }
 
 export function loadAudio() {
-  // Load background music
   musicAudio = new Audio('../resources/music.mp3');
-
   musicAudio.loop = true;
   musicAudio.volume = 0.3;
-
-  // Optional preload
   musicAudio.preload = 'auto';
 }
 
@@ -92,15 +100,11 @@ export function playSound(name, volume = 1.0) {
 }
 
 export function startMusic() {
-  if (!musicAudio) {
-    loadAudio();
-  }
-
+  if (!musicAudio) loadAudio();
   if (muted) return;
-
-  musicAudio
-    .play()
-    .catch(err => console.warn('Music autoplay blocked:', err));
+  musicAudio.play().catch(() => {
+    musicStartPending = true;
+  });
 }
 
 export function stopMusic() {

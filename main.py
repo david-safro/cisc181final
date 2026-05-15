@@ -4,9 +4,9 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.requests import Request
 
-app = FastAPI()
-
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+app = FastAPI()
 
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
 app.mount("/games",  StaticFiles(directory=os.path.join(BASE_DIR, "games")),  name="games")
@@ -17,9 +17,11 @@ connected: list[WebSocket] = []
 
 @app.get("/")
 async def index(request: Request):
+    games_dir = os.path.join(BASE_DIR, "games")
     folders = [
-        name for name in os.listdir(os.path.join(BASE_DIR, "games"))
-        if os.path.isdir(os.path.join(BASE_DIR, "games", name))
+        name for name in os.listdir(games_dir)
+        if os.path.isdir(os.path.join(games_dir, name))
+        and os.path.exists(os.path.join(games_dir, name, f"{name}.js"))
     ]
     return templates.TemplateResponse("menu.html", {"request": request, "folders": folders})
 

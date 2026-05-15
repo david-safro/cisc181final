@@ -48,15 +48,24 @@ export function showScreen(name, data = {}) {
 function renderLobby(el, { onCreateRoom, onJoinRoom, onPlayLocal, onPlayVsAI }) {
   el.innerHTML = `
     <div class="pool-panel pool-lobby-panel">
-      <div class="pool-title">POOL</div>
+      <div class="pool-title">8-BALL POOL</div>
+      <div class="pool-hint">Click &amp; drag from the cue ball to shoot</div>
       <div class="pool-section">
         <div class="pool-local-label">vs CPU</div>
         <input id="pool-ai-p1" class="pool-input" type="text" maxlength="16" placeholder="Your name" />
+        <div class="pool-difficulty-row">
+          <span class="pool-difficulty-label">Difficulty</span>
+          <select id="pool-ai-difficulty" class="pool-select">
+            <option value="easy">Easy</option>
+            <option value="medium" selected>Medium</option>
+            <option value="hard">Hard</option>
+          </select>
+        </div>
         <button id="pool-play-ai" class="pool-btn pool-btn-primary">Play vs AI</button>
       </div>
       <div class="pool-divider"></div>
       <div class="pool-section">
-        <div class="pool-local-label">Local Game</div>
+        <div class="pool-local-label">Local 2-Player</div>
         <input id="pool-local-p1" class="pool-input" type="text" maxlength="16" placeholder="Player 1 name" />
         <input id="pool-local-p2" class="pool-input" type="text" maxlength="16" placeholder="Player 2 name" />
         <button id="pool-play-local" class="pool-btn pool-btn-secondary">Play Local</button>
@@ -78,7 +87,8 @@ function renderLobby(el, { onCreateRoom, onJoinRoom, onPlayLocal, onPlayVsAI }) 
   });
   el.querySelector('#pool-play-ai').addEventListener('click', () => {
     const p1 = el.querySelector('#pool-ai-p1').value.trim() || 'Player';
-    onPlayVsAI(p1);
+    const difficulty = el.querySelector('#pool-ai-difficulty').value;
+    onPlayVsAI(p1, difficulty);
   });
   el.querySelector('#pool-play-local').addEventListener('click', () => {
     const p1 = el.querySelector('#pool-local-p1').value.trim() || 'Player 1';
@@ -134,7 +144,7 @@ function renderRoom(el, { roomCode, localName, opponentName, isHost, onStart, on
 }
 
 // ── HUD ───────────────────────────────────────────────────────────────────────
-function renderHUD(el, { players, currentTurn, myPlayerNum, localMode, aiMode, powerVisible, powerPct }) {
+function renderHUD(el, { players, currentTurn, myPlayerNum, localMode, aiMode, powerVisible, powerPct, onToggleMute, muteState }) {
   const p1 = players?.[0] || { name: 'P1', group: null, pocketed: [] };
   const p2 = players?.[1] || { name: 'P2', group: null, pocketed: [] };
 
@@ -144,8 +154,14 @@ function renderHUD(el, { players, currentTurn, myPlayerNum, localMode, aiMode, p
     return indices.map(i => {
       const pocketed = player.pocketed.includes(i);
       const col = BALL_COLORS[i];
-      return `<span class="pool-ball-dot${pocketed ? ' pool-ball-pocketed' : ''}" style="background:${col}"></span>`;
+      return `<span class="pool-ball-dot${pocketed ? ' pool-ball-pocketed' : ''}" style="background:${col}" title="Ball ${i}"></span>`;
     }).join('');
+  };
+
+  const groupBadge = (player) => {
+    if (!player.group) return '';
+    const label = player.group === 'solids' ? 'SOLIDS' : 'STRIPES';
+    return `<span class="pool-group-badge">${label}</span>`;
   };
 
   const currentPlayer = players?.[currentTurn - 1];
@@ -167,28 +183,40 @@ function renderHUD(el, { players, currentTurn, myPlayerNum, localMode, aiMode, p
     turnClass = myTurn ? 'pool-my-turn' : 'pool-opp-turn';
   }
 
+  const muteIcon = muteState ? '🔇' : '🔊';
+
   el.innerHTML = `
     <div class="pool-hud-bar">
       <div class="pool-hud-player ${currentTurn === 1 ? 'pool-hud-active' : ''}">
-        <div class="pool-hud-name">${p1.name}</div>
+        <div class="pool-hud-name-row">
+          <span class="pool-hud-name">${p1.name}</span>
+          ${groupBadge(p1)}
+        </div>
         <div class="pool-hud-balls">${ballIndicators(p1)}</div>
       </div>
       <div class="pool-hud-center">
-        <div class="pool-turn-indicator ${turnClass}">
-          ${turnText}
-        </div>
+        <div class="pool-turn-indicator ${turnClass}">${turnText}</div>
       </div>
       <div class="pool-hud-player ${currentTurn === 2 ? 'pool-hud-active' : ''}">
-        <div class="pool-hud-name">${p2.name}</div>
+        <div class="pool-hud-name-row">
+          <span class="pool-hud-name">${p2.name}</span>
+          ${groupBadge(p2)}
+        </div>
         <div class="pool-hud-balls">${ballIndicators(p2)}</div>
       </div>
+      <button id="pool-mute-btn" class="pool-mute-btn" title="${muteState ? 'Unmute' : 'Mute'}">${muteIcon}</button>
     </div>
     <div id="pool-msg-area" class="pool-msg-area"></div>
     <div id="pool-power-bar-wrap" class="pool-power-bar-wrap" style="display:${powerVisible ? 'flex' : 'none'}">
+      <div class="pool-power-label">POWER</div>
       <div class="pool-power-bar-bg">
-        <div class="pool-power-bar-fill" style="width:${(powerPct || 0) * 100}%;background:hsl(${(1 - (powerPct || 0)) * 120},90%,45%)"></div>
+        <div class="pool-power-bar-fill" style="width:${(powerPct || 0) * 100}%;background:hsl(${(1 - (powerPct || 0)) * 120},90%,50%)"></div>
       </div>
     </div>`;
+
+  el.querySelector('#pool-mute-btn')?.addEventListener('click', () => {
+    if (onToggleMute) onToggleMute();
+  });
 }
 
 // ── Result screen ─────────────────────────────────────────────────────────────
